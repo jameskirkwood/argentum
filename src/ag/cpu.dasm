@@ -1,0 +1,55 @@
+.namespace "AG_CPU_"
+
+;------------------------------------------------------------------------------
+;; # Low level CPU related functions
+;------------------------------------------------------------------------------
+
+;------------------------------------------------------------------------------
+.symbol HWN: function() → (n) "Get number of attached hardware"
+;------------------------------------------------------------------------------
+    hwn a
+    set push, a
+    sti pc, [i]
+
+;------------------------------------------------------------------------------
+.symbol HWQSS: function($port, $this) "HWQ(`$port`) then store {a, b, c, x, y} at `$this`"
+;------------------------------------------------------------------------------
+    set j, pop
+    hwq pop
+    set push, i
+    sti [j], a
+    sti [j], b
+    sti [j], c
+    sti [j], x
+    sti [j], y
+    set i, pop
+    sti pc, [i]
+
+;------------------------------------------------------------------------------
+.symbol FINDHWBYIDSS: function($idhi, $idlo) → (port) "Find hardware by ID"
+;------------------------------------------------------------------------------
+    set a, pop
+    set j, pop
+    set push, -1
+    set push, z
+    set push, i
+    set i, a
+    hwn z
+    ife z, 0
+        add pc, .LOOP_END - .LOOP
+.LOOP:
+    sub z, 1
+    hwq z
+    ife a, i
+        ife b, j
+            set pc, .FOUND
+    ifn z, 0
+        sub pc, .LOOP_END - .LOOP
+.LOOP_END:
+    set i, pop
+    set z, pop
+    sti pc, [i]
+.FOUND:
+    set [sp + 2], z
+    sub pc, .FOUND_END - .LOOP_END
+.FOUND_END:

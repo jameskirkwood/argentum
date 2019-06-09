@@ -1,0 +1,84 @@
+.namespace "AG_THREAD_"
+
+;------------------------------------------------------------------------------
+;; # Direct threaded multitasking execution engine
+;------------------------------------------------------------------------------
+
+;------------------------------------------------------------------------------
+.symbol ACTIVEPTR: word "Pointer to the currently active process"
+;------------------------------------------------------------------------------
+;; TODO: Pointing this variable to a process object shall cause that process to
+;; execute following the next interleave. A scheduler should be responsible for
+;; updating this variable at the appropriate time.
+;------------------------------------------------------------------------------
+    dat 0
+
+;------------------------------------------------------------------------------
+.symbol ENTER: machine code "Execute an inline threaded instruction sequence"
+;------------------------------------------------------------------------------
+;; ### Inline Arguments
+;;
+;; | Offset | Size | Description |
+;; | - | - | - |
+;; | 0 | 1 | Size of the stack frame to allocate |
+;; | 1 | 1+ | Sequence of threaded instructions |
+;;
+;; ### Explanation
+;;
+;; Within a **function** (written in machine code), `JSR AG_THREAD_ENTER`
+;; transitions to threaded execution, pushing a new **frame** onto the call
+;; stack and executing a threaded instruction sequence, stored immediately
+;; after the branch.
+;;
+;; A **threaded instruction sequence** is a **function** address followed by
+;; any inline arguments. It is, strictly speaking, not a sequence. Most
+;; functions expect a threaded instruction sequence as their final inline
+;; argument, to be executed afterwards. Thus, through recursion, one threaded
+;; instruction sequence may contain arbitrarily many others.
+;;
+;; The new **frame** contains the following:
+;; - The frame and machine stack pointers to be restored when the threaded
+;;   instruction sequence executes AG_THREAD_EXIT
+;; - Space for the local variables used by the threaded instruction sequence
+;; - Space for the machine stack at its maximum size during the execution of
+;;   the threaded instruction sequence
+;;
+;; The machine stack size must include any data pushed during the execution of
+;; any called **functions** (eg. one word for a function beginning with
+;; `JSR AG_THREAD_ENTER`), plus two words in case of an interrupt.
+;------------------------------------------------------------------------------
+    set c, pop
+    ; c: address of word immediately following the jsr
+    set a, [c]
+    ; a: size of stack frame to be allocated
+    set x, i
+    ; x: threaded return address (not pushing yet to minimise max stack size)
+    jsr AG_HEAP_ALLOC ; (in a: size, out b: address) clobbers i, j
+    ; b: new frame pointer
+    set push, x ; save the instruction pointer on the caller's operand stack
+    set [b], [z] ; save the frame pointer at the callee's [frame_ptr + 0]
+    set [b + 1], sp ; save the stack pointer at the callee's [frame_ptr + 1]
+    set a, [c]
+    add a, b
+    ; a: new operand stack pointer
+    sti i, c ; update instruction pointer
+    set [z], b ; update frame pointer
+    set sp, a ; update operand stack pointer
+    sti pc, [i] ; execute first bead in the thread
+
+;------------------------------------------------------------------------------
+.symbol EXIT: term function() "Threaded return to caller"
+;------------------------------------------------------------------------------
+; TODO: Only back up and restore state if interleaving
+;------------------------------------------------------------------------------
+    set a, [z]
+    ; a: returning subroutine's frame pointer
+    set [z], [a] ; restore frame pointer
+    set sp, [a + 1] ; restore stack pointer
+    set [z + 1], pop ; pop and back up saved instruction pointer
+    set [z + 2], sp ; back up stack pointer
+    jsr AG_HEAP_FREE ; (in a: address) clobbers i ; free returning frame
+    set z, [AG_THREAD_ACTIVEPTR] ; interleave processes
+    set i, [z + 1] ; restore instruction pointer
+    set sp, [z + 2] ; restore stack pointer
+    sti pc, [i]

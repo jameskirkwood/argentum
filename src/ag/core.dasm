@@ -1,0 +1,114 @@
+.namespace "AG_CORE_"
+
+;------------------------------------------------------------------------------
+;; # Core subroutine library
+;------------------------------------------------------------------------------
+
+;------------------------------------------------------------------------------
+.symbol DROP: function($word) "Pop one word, ignoring its value"
+;------------------------------------------------------------------------------
+    set a, pop
+    sti pc, [i]
+
+;------------------------------------------------------------------------------
+.symbol GETII: function(!x, !y) → (x, y) "Push two inline words"
+;------------------------------------------------------------------------------
+    sti push, [i]
+    ; fall through to AG_CORE_GETI
+
+;------------------------------------------------------------------------------
+.symbol GETI: function(!x) → (x) "Push one inline word"
+;------------------------------------------------------------------------------
+    sti push, [i]
+    sti pc, [i]
+
+;------------------------------------------------------------------------------
+.symbol STASI: function($word, !addr) "Write `$word` at address `!addr`"
+;------------------------------------------------------------------------------
+    sti a, [i]
+    set [a], pop
+    sti pc, [i]
+
+;------------------------------------------------------------------------------
+.symbol STASS: function($word, $addr) "Write `$word` at address `$addr`"
+;------------------------------------------------------------------------------
+    set a, pop
+    set [a], pop
+    sti pc, [i]
+
+;------------------------------------------------------------------------------
+.symbol STLSI: function($word, !offs) "Store `$word` at frame offset `!offs`"
+;------------------------------------------------------------------------------
+    sti a, [i]
+    add a, [z]
+    set [a], pop
+    sti pc, [i]
+
+;------------------------------------------------------------------------------
+.symbol LDLI: function(!offs) → (x) "Load word at frame offset `!offs`"
+;------------------------------------------------------------------------------
+    sti a, [i]
+    add a, [z]
+    set push, [a]
+    sti pc, [i]
+
+;------------------------------------------------------------------------------
+.symbol NEWNS: function($size) → (addr) "Allocate at least `$size` words on the heap"
+;------------------------------------------------------------------------------
+    set a, pop
+    set c, i
+    jsr AG_HEAP_ALLOC ; (in a: size, out b: address) clobbers i, j
+    set i, c
+    set push, b
+    sti pc, [i]
+
+;------------------------------------------------------------------------------
+; .symbol NEWKI: function(!log2_size) → (addr) ""
+;------------------------------------------------------------------------------
+
+;------------------------------------------------------------------------------
+.symbol DELS: function($addr) "Free memory previously allocated on the heap at address `$addr`"
+;------------------------------------------------------------------------------
+    set a, pop
+    set b, i
+    jsr AG_HEAP_FREE ; (in a: address) clobbers i
+    set i, b
+    sti pc, [i]
+
+;------------------------------------------------------------------------------
+.symbol ADDSI: function($a, !b) → (a + b) "Add inline word to top of stack"
+;------------------------------------------------------------------------------
+    sti a, [i]
+    add [sp], a
+    sti pc, [i]
+
+;------------------------------------------------------------------------------
+.symbol JMPI: term function(!addr) "Continue threaded execution at `!addr`"
+;------------------------------------------------------------------------------
+    set i, [i]
+    sti pc, [i]
+
+;------------------------------------------------------------------------------
+.symbol RRANGELIT: function(!offs, !exit) "Decrement or exit if zero"
+;------------------------------------------------------------------------------
+;; If the word at offset `!offs` in the frame is not zero, decrement it and
+;; execute the next instruction. Otherwise, continue threaded execution at
+;; address `!exit`.
+;;
+;; If the trailing instruction sequence ends with AG_CORE_JMPI back to the call
+;; to this function, and does not modify the word at offset `!offs` in the
+;; frame, it will be executed once for each value of frame[offs] from one less
+;; than its initial value down to zero.
+;------------------------------------------------------------------------------
+    sti a, [i]
+    add a, [z]
+    ife [a], 0
+        add pc, .EXIT - .NEXT
+.NEXT:
+    add i, 1
+    sub [a], 1
+    sti pc, [i]
+.EXIT:
+    set a, pop
+    set i, [i]
+    sti pc, [i]
