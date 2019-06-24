@@ -20,7 +20,7 @@
 ;;
 ;; | Offset | Size | Description |
 ;; | - | - | - |
-;; | 0 | 1 | Size of the stack frame to allocate |
+;; | 0 | 1 | Base 2 logarithm of the (power of two) size of the stack frame to allocate |
 ;; | 1 | 1+ | Sequence of threaded instructions |
 ;;
 ;; ### Explanation
@@ -47,37 +47,44 @@
 ;; any called **functions** (eg. one word for a function beginning with
 ;; `JSR AG_THREAD_ENTER`), plus two words in case of an interrupt.
 ;------------------------------------------------------------------------------
-    set c, pop
-    ; c: address of word immediately following the jsr
-    set a, [c]
-    ; a: size of stack frame to be allocated
-    set x, i
-    ; x: threaded return address (not pushing yet to minimise max stack size)
-    jsr AG_HEAP_ALLOC ; (in a: size, out b: address) clobbers i, j
+    ; i: threaded return address
+    ; [z]: caller frame pointer
+    set x, pop
+    ; x: address of word immediately following the jsr
+    set a, [x]
+    ; a: base 2 logarithm of size of stack frame to be allocated
+    jsr AG_HEAP_ALLOC ; (in a: index, out b: address, out c: size)
     ; b: new frame pointer
-    set push, x ; save the instruction pointer on the caller's operand stack
+    ; c: frame size
+    set push, i ; save the instruction pointer on the caller's stack
     set [b], [z] ; save the frame pointer at the callee's [frame_ptr + 0]
     set [b + 1], sp ; save the stack pointer at the callee's [frame_ptr + 1]
-    set a, [c]
-    add a, b
-    ; a: new operand stack pointer
-    sti i, c ; update instruction pointer
+    add c, b
+    ; c: new stack pointer
+    sti i, x ; update instruction pointer
     set [z], b ; update frame pointer
-    set sp, a ; update operand stack pointer
+    set sp, c ; update stack pointer (atomically!!!)
     sti pc, [i] ; execute first bead in the thread
 
 ;------------------------------------------------------------------------------
-.symbol EXIT: term function() "Threaded return to caller"
+.symbol EXIT: term function(!index) "Threaded return to caller"
 ;------------------------------------------------------------------------------
-; TODO: Only back up and restore state if interleaving
+;; ### Inline Arguments
+;;
+;; | Offset | Size | Description |
+;; | - | - | - |
+;; | 0 | 1 | Base 2 logarithm of the (power of two) size of the returning stack frame |
 ;------------------------------------------------------------------------------
-    set a, [z]
-    ; a: returning subroutine's frame pointer
-    set [z], [a] ; restore frame pointer
-    set sp, [a + 1] ; restore stack pointer
+    ; [z]: returning frame pointer
+    set b, [z]
+    ; b: returning frame pointer
+    set [z], [b] ; restore frame pointer
+    set sp, [b + 1] ; restore stack pointer (atomically!!!)
     set [z + 1], pop ; pop and back up saved instruction pointer
     set [z + 2], sp ; back up stack pointer
-    jsr AG_HEAP_FREE ; (in a: address) clobbers i ; free returning frame
+    set a, [i]
+    ; a: base 2 logarithm of frame size
+    jsr AG_HEAP_FREE ; (in a: index, in b: address) ; free returning frame
     set z, [AG_THREAD_ACTIVEPTR] ; interleave processes
     set i, [z + 1] ; restore instruction pointer
     set sp, [z + 2] ; restore stack pointer

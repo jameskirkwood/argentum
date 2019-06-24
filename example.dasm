@@ -13,21 +13,31 @@ set pc, main
     set z, MAIN_PROCESS
     set [AG_THREAD_ACTIVEPTR], z
     jsr AG_THREAD_ENTER
-        dat 16
+        dat 4
 
     dat LEM1802_INIT
-    dat AG_CORE_GETI, 0x8000, LEM1802_MEM_MAP_SCREEN
-    dat AG_CPU_HWN, AG_CORE_STLSI, 2
+    dat AG_CORE_GETI, 0x8000
+        dat LEM1802_MEM_MAP_SCREEN
+    dat AG_CPU_HWN
+        dat AG_CORE_STLSI, 2
 
 :MAIN_LOOP
     dat AG_CORE_RRANGELIT, 2, MAIN_END
-        dat AG_CORE_LDLI, 2, AG_CORE_ADDSI, 0xf030
-            dat AG_CORE_LDLI, 2, AG_CORE_ADDSI, 0x8000, AG_CORE_STASS
-        dat AG_CORE_GETI, 5, AG_CORE_NEWNS, AG_CORE_STLSI, 3
-        dat AG_CORE_GETI, 0, AG_CORE_LDLI, 3, AG_CPU_HWQSS
-        dat AG_CORE_LDLI, 3, AG_CORE_DELS
 
-    dat AG_CORE_JMPI, MAIN_LOOP
+        dat AG_CORE_LDLI, 2
+            dat AG_CORE_ADDSI, 0xf030
+            dat AG_CORE_LDLI, 2
+                dat AG_CORE_ADDSI, 0x8000
+                dat AG_CORE_STASS
+        dat AG_CORE_NEWI, 3
+            dat AG_CORE_STLSI, 3
+        dat AG_CORE_GETI, 0
+            dat AG_CORE_LDLI, 3
+                dat AG_CPU_HWQSS
+        dat AG_CORE_LDLI, 3
+            dat AG_CORE_DELSI, 3
+        dat AG_CORE_JMPI, MAIN_LOOP
+
 :MAIN_END
     dat AG_CORE_JMPI, MAIN_END
 

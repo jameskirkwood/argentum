@@ -11,66 +11,42 @@
     dat 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 
 ;------------------------------------------------------------------------------
-.symbol ALLOC: subroutine(in *size*, out *address*) "Allocate space on the heap"
+.symbol ALLOC: subroutine(in *index*, out *address*) "Allocate space on the heap"
 ;------------------------------------------------------------------------------
-;; ### Registers
-;;
 ;; | Register | Mode | Description |
 ;; | - | - | - |
-;; | `A` | in | **size**: minimum size to allocate |
+;; | `A` | in | **index**: allocation pool index, equal to the base 2 logarithm of the allocation size |
 ;; | `B` | out | **address**: base address of allocation |
+;; | `C` | out | **size**: allocation size (equal to `2 ** index`) |
 ;;
-;; Clobbers `I`, `J`
-;;
-;; TODO: Take in the pool index directly instead of number of words needed.
-;; This is usually known at compile time after all.
+;; TODO: use the free pointer address instead of index for reduced overhead
 ;------------------------------------------------------------------------------
-    sub a, 1
-    set i, 1
-.LOGSIZE:
-    shr a, 1
-    ifn a, 0
-        sti pc, .LOGSIZE
-    ; i: base 2 logarithm of allocation size
-    set a, 1
-    shl a, i
-    ; a: allocation size (rounded up to a power of two)
-    set b, [AG_HEAP_FREEPTRARY + i]
+    set b, [AG_HEAP_FREEPTRARY + a]
     ; b: pointer to last freed allocation of same size, or null
     ife b, 0 ; if null, grow heap
         add pc, .GROW - .NOGROW
     ; else allocate from free list
 .NOGROW:
-    set [AG_HEAP_FREEPTRARY + i], [b]
-    set [b], i
-    add b, 1
+    set [AG_HEAP_FREEPTRARY + a], [b]
     ; b: allocated address
     set pc, pop
 .GROW:
     set b, [AG_HEAP_ENDPTR]
-    set [b], i
-    add b, 1
     ; b: allocated address
-    add a, b
-    ; a: new heap end
-    set [AG_HEAP_ENDPTR], a
+    set c, 1
+    shl c, a
+    ; c: allocation size
+    add [AG_HEAP_ENDPTR], c
     set pc, pop
 
 ;------------------------------------------------------------------------------
-.symbol FREE: subroutine(in *address*) "Free allocated space on the heap"
+.symbol FREE: subroutine(in *index*, in *address*) "Free allocated space on the heap"
 ;------------------------------------------------------------------------------
-;; ### Registers
-;;
 ;; | Register | Mode | Description |
 ;; | - | - | - |
-;; | `A` | in | **address**: base address of allocation to free |
-;;
-;; Clobbers `I`
+;; | `A` | in | **index**: allocation pool index that was used to allocate the memory |
+;; | `B` | in | **address**: base address of allocation to free |
 ;------------------------------------------------------------------------------
-    sub a, 1
-    ; a: new free list head pointer
-    set i, [a]
-    ; i: base 2 logarithm of allocation size
-    set [a], [AG_HEAP_FREEPTRARY + i]
-    set [AG_HEAP_FREEPTRARY + i], a
+    set [b], [AG_HEAP_FREEPTRARY + a]
+    set [AG_HEAP_FREEPTRARY + a], b
     set pc, pop

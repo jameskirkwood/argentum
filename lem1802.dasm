@@ -8,11 +8,11 @@
 :LEM1802_INIT
 ;------------------------------------------------------------------------------
     jsr AG_THREAD_ENTER
-        dat 7
+        dat 3
     dat AG_CORE_GETII, 0x734d, 0xf615 ; Techcompliant ID (originally 7349f615)
     dat AG_CPU_FINDHWBYIDSS
     dat AG_CORE_STASI, LEM1802_ID
-    dat AG_THREAD_EXIT
+    dat AG_THREAD_EXIT, 3
 
 ;------------------------------------------------------------------------------
 :LEM1802_MEM_MAP_SCREEN

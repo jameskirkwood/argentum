@@ -53,26 +53,19 @@
     sti pc, [i]
 
 ;------------------------------------------------------------------------------
-.symbol NEWNS: function($size) → (addr) "Allocate at least `$size` words on the heap"
+.symbol NEWI: function(!index) → (addr) "Allocate `2 ** !index` words on the heap"
 ;------------------------------------------------------------------------------
-    set a, pop
-    set c, i
-    jsr AG_HEAP_ALLOC ; (in a: size, out b: address) clobbers i, j
-    set i, c
+    sti a, [i]
+    jsr AG_HEAP_ALLOC ; (in a: index, out b: address, out c: size)
     set push, b
     sti pc, [i]
 
 ;------------------------------------------------------------------------------
-; .symbol NEWKI: function(!log2_size) → (addr) ""
+.symbol DELSI: function(!index, $addr) "Free memory previously allocated on the heap at address `$addr` with index `!index`"
 ;------------------------------------------------------------------------------
-
-;------------------------------------------------------------------------------
-.symbol DELS: function($addr) "Free memory previously allocated on the heap at address `$addr`"
-;------------------------------------------------------------------------------
-    set a, pop
-    set b, i
-    jsr AG_HEAP_FREE ; (in a: address) clobbers i
-    set i, b
+    sti a, [i]
+    set b, pop
+    jsr AG_HEAP_FREE ; (in a: index, in b: address)
     sti pc, [i]
 
 ;------------------------------------------------------------------------------
