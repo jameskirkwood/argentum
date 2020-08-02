@@ -27,13 +27,13 @@
 
 > Load word at frame offset `!offs`
 
-## **function** `AG_CORE_NEWNS`($size) → (addr) 
+## **function** `AG_CORE_NEWI`(!index) → (addr) 
 
-> Allocate at least `$size` words on the heap
+> Allocate `2 ** !index` words on the heap
 
-## **function** `AG_CORE_DELS`($addr) 
+## **function** `AG_CORE_DELSI`(!index, $addr) 
 
-> Free memory previously allocated on the heap at address `$addr`
+> Free memory previously allocated on the heap at address `$addr` with index `!index`
 
 ## **function** `AG_CORE_ADDSI`($a, !b) → (a + b) 
 

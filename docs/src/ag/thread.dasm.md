@@ -14,7 +14,7 @@ updating this variable at the appropriate time.
 
 | Offset | Size | Description |
 | - | - | - |
-| 0 | 1 | Size of the stack frame to allocate |
+| 0 | 1 | Base 2 logarithm of the (power of two) size of the stack frame to allocate |
 | 1 | 1+ | Sequence of threaded instructions |
 
 ### Explanation
@@ -40,7 +40,12 @@ the threaded instruction sequence
 The machine stack size must include any data pushed during the execution of
 any called **functions** (eg. one word for a function beginning with
 `JSR AG_THREAD_ENTER`), plus two words in case of an interrupt.
-## **term function** `AG_THREAD_EXIT`() 
+## **term function** `AG_THREAD_EXIT`(!index) 
 
 > Threaded return to caller
 
+### Inline Arguments
+
+| Offset | Size | Description |
+| - | - | - |
+| 0 | 1 | Base 2 logarithm of the (power of two) size of the returning stack frame |
